@@ -26,6 +26,7 @@ package simplenet;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.AlreadyConnectedException;
@@ -98,8 +99,8 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
             synchronized (client.buffer) {
                 client.size.add(bytesReceived);
                 
-                var buffer = client.buffer.flip();
-                var queue = client.queue;
+                ByteBuffer buffer = (ByteBuffer) client.buffer.flip();
+                Deque<IntPair<Predicate<ByteBuffer>>> queue = client.queue;
                 
                 IntPair<Predicate<ByteBuffer>> peek;
     
@@ -112,13 +113,13 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
                 var stack = client.stack;
 				var isQueueEmpty = false;
                 int key;
-	
+
 				client.inCallback.set(true);
-                
+
                 while (client.size.get() >= (key = peek.key)) {
                     client.size.add(-key);
                     
-                    var data = new byte[key];
+                    byte[] data = new byte[key];
     
                     buffer.get(data);
                     
@@ -138,7 +139,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
                     }
     
                     // TODO: After logging is added, warn the user if wrappedBuffer.hasRemaining() is true.
-					
+
                     while (!stack.isEmpty()) {
                         queue.offerLast(stack.pop());
                     }
@@ -186,9 +187,9 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
         @Override
         public void completed(Integer result, ByteBuffer buffer) {
             var client = Client.this;
-    
+
             DIRECT_BUFFER_POOL.give(buffer);
-            
+
             synchronized (client.outgoingPackets) {
                 var payload = client.packetsToFlush.poll();
     
@@ -224,27 +225,27 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
      * wouldn't reference the same value.
      */
     private final MutableInt size;
-	
+
 	/**
 	 * A {@link MutableBoolean} that keeps track of whether or not the executing code is inside a callback.
 	 */
 	private final MutableBoolean inCallback;
-    
+
     /**
      * A thread-safe method of keeping track if this {@link Client} is in the process of shutting down.
      */
     private final AtomicBoolean closing;
-    
+
 	/**
 	 * A thread-safe method of keeping track if this {@link Client} is currently waiting for bytes to arrive.
 	 */
 	private final AtomicBoolean readInProgress;
-    
+
     /**
      * A thread-safe method of keeping track whether this {@link Client} is currently writing data to the network.
      */
     private final AtomicBoolean writeInProgress;
-    
+
     /**
      * A {@link Queue} to manage outgoing {@link Packet}s.
      */
@@ -270,7 +271,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
      * Whether or not the decryption {@link Cipher} specifies {@code NoPadding} as part of its algorithm.
      */
     private boolean decryptionNoPadding;
-    
+
     /**
      * The {@link Cipher} used for {@link Packet} encryptionCipher.
      */
@@ -302,7 +303,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
      * The backing {@link Channel} of a {@link Client}.
      */
     private AsynchronousSocketChannel channel;
-    
+
     /**
      * Instantiates a new {@link Client} by attempting to open the backing {@link AsynchronousSocketChannel} with a
      * default buffer size of {@code 4,096} bytes.
@@ -359,7 +360,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
      */
     public Client(Client client) {
         super(client);
-	
+
 		this.size = client.size;
 		this.stack = client.stack;
 		this.queue = client.queue;
@@ -410,7 +411,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
             throw new IllegalArgumentException("The specified port must be between 0 and 65535!");
         }
 
-        var executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<>(), runnable -> {
             Thread thread = new Thread(runnable);
             thread.setDaemon(false);
@@ -444,7 +445,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
             close();
             return;
         }
-        
+
         ForkJoinPool.commonPool().execute(() -> connectListeners.forEach(Runnable::run));
     }
 
@@ -462,7 +463,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
         if (closing.getAndSet(true)) {
             return;
         }
-        
+
         preDisconnectListeners.forEach(Runnable::run);
 
         flush();
@@ -470,15 +471,19 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
         while (writeInProgress.get()) {
             Thread.onSpinWait();
         }
-    
+
         Channeled.super.close();
-    
+
         while (channel.isOpen()) {
-            Thread.onSpinWait();
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
-    
+
         postDisconnectListeners.forEach(Runnable::run);
-        
+
         if (group != null) {
             try {
                 group.shutdownNow();
@@ -522,22 +527,22 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
         if (shouldDecrypt && !decryptionNoPadding) {
             n = Utility.roundUpToNextMultiple(n, decryptionCipher.getBlockSize());
         }
-	
+
         synchronized (buffer) {
             var pair = new IntPair<Predicate<ByteBuffer>>(n, buffer -> predicate.test(buffer.order(order)));
-            
+
             if (inCallback.get()) {
                 stack.push(pair);
                 return;
             }
-	
+
 			while (size.get() >= n && queue.isEmpty() && stack.isEmpty()) {
 				size.add(-n);
-		
+
 				var data = new byte[n];
-		
+
 				buffer.order(order).get(data);
-		
+
 				if (shouldDecrypt) {
 					try {
 						data = decryptionFunction.apply(decryptionCipher, data);
@@ -545,18 +550,18 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
 						throw new IllegalStateException("An exception occurred whilst decrypting data:", e);
 					}
 				}
-		
+
 				var wrappedBuffer = ByteBuffer.wrap(data).order(order);
-		
+
 				if (!predicate.test(wrappedBuffer)) {
 					return;
 				}
-		
+
 				// TODO: After logging is added, warn the user if wrappedBuffer.hasRemaining() is true.
 			}
-	
+
 			queue.offerFirst(pair);
-	
+
 			if (!readInProgress.getAndSet(true)) {
 				channel.read(buffer, this, Listener.INSTANCE);
 			}
@@ -570,29 +575,29 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
      */
     public final void flush() {
 		Packet packet;
-		
+
         int totalBytes = 0;
         
         var shouldEncrypt = encryptionCipher != null;
         var queue = new ArrayDeque<byte[]>();
-        
+
         synchronized (outgoingPackets) {
             while ((packet = outgoingPackets.poll()) != null) {
                 int currentBytes = totalBytes;
-        
+
                 boolean tooBig = (totalBytes += packet.getSize(this)) >= bufferSize;
                 boolean empty = outgoingPackets.isEmpty();
-        
+
                 if (!tooBig || empty) {
                     queue.addAll(packet.getQueue());
                 }
-        
+
                 // If we've buffered all of the packets that we can, send them off.
                 if (tooBig || empty) {
                     var raw = DIRECT_BUFFER_POOL.take(empty ? totalBytes : currentBytes);
-            
+
                     byte[] input;
-            
+
                     try {
                         while ((input = queue.pollFirst()) != null) {
                             raw.put(shouldEncrypt ? encryptionFunction.apply(encryptionCipher, input) : input);
@@ -600,17 +605,17 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
                     } catch (GeneralSecurityException e) {
                         throw new IllegalStateException("An exception occurred whilst encrypting data:", e);
                     }
-            
+
                     raw.flip();
-            
+
                     queue.addAll(packet.getQueue());
-                    
+
                     if (!writeInProgress.getAndSet(true)) {
                         channel.write(raw, raw, packetHandler);
                     } else {
                         packetsToFlush.offer(raw);
                     }
-            
+
                     totalBytes = packet.getSize(this);
                 }
             }

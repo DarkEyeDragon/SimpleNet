@@ -46,7 +46,7 @@ public interface ByteReader extends DataReader {
      */
     default byte readByte() throws IllegalStateException {
         checkIfBlockingInsideCallback();
-        var future = new CompletableFuture<Byte>();
+        CompletableFuture<Byte> future = new CompletableFuture<>();
         readByte(future::complete);
         return read(future);
     }
@@ -112,8 +112,8 @@ public interface ByteReader extends DataReader {
      * @param n          The amount of bytes requested.
      * @param consumer   Holds the operations that should be performed once the {@code n} bytes are received.
      */
-    private void processBytes(ByteBuffer buffer, int n, Consumer<byte[]> consumer) {
-        var b = new byte[n];
+    default void processBytes(ByteBuffer buffer, int n, Consumer<byte[]> consumer) {
+        byte[] b = new byte[n];
         buffer.get(b);
         consumer.accept(b);
     }

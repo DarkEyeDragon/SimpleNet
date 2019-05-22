@@ -60,7 +60,7 @@ public final class IntPair<T> {
             return false;
         }
         
-        var pair = (IntPair<?>) o;
+        IntPair<?> pair = (IntPair<?>) o;
         
         return key == pair.key && Objects.equals(value, pair.value);
     }

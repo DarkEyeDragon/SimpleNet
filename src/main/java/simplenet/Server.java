@@ -66,7 +66,7 @@ public class Server extends Receiver<Consumer<Client>> implements Channeled<Asyn
      * The backing {@link AsynchronousChannelGroup} of this {@link Server}.
      */
     private final AsynchronousChannelGroup group;
-    
+
     /**
      * The backing {@link Channel} of this {@link Server}.
      */
@@ -110,7 +110,7 @@ public class Server extends Receiver<Consumer<Client>> implements Channeled<Asyn
         super(bufferSize);
     
         this.connectedClients = ConcurrentHashMap.newKeySet();
-    
+
         var executor = new ThreadPoolExecutor(numThreads, numThreads, 0L, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<>(), runnable -> {
             Thread thread = new Thread(runnable);
@@ -118,7 +118,7 @@ public class Server extends Receiver<Consumer<Client>> implements Channeled<Asyn
             thread.setName(thread.getName().replace("Thread", "SimpleNet"));
             return thread;
         }, (runnable, threadPoolExecutor) -> {});
-    
+
         executor.prestartAllCoreThreads();
         
         try {
@@ -159,7 +159,7 @@ public class Server extends Receiver<Consumer<Client>> implements Channeled<Asyn
 
                 @Override
                 public void failed(Throwable t, Void attachment) {
-                
+
                 }
             });
 
@@ -183,9 +183,9 @@ public class Server extends Receiver<Consumer<Client>> implements Channeled<Asyn
             client.close();
             return true;
         });
-    
+
         Channeled.super.close();
-        
+
         try {
             group.shutdownNow();
         } catch (IOException e) {
@@ -222,7 +222,6 @@ public class Server extends Receiver<Consumer<Client>> implements Channeled<Asyn
      * @param consumer The action to perform for each {@link Client}.
      * @param clients A variable amount of {@link Client}s to exclude from receiving the {@link Packet}.
      */
-    @SafeVarargs
     private <T extends Client> void writeHelper(Consumer<Client> consumer, T... clients) {
         var toExclude = Collections.newSetFromMap(new IdentityHashMap<>(clients.length));
         Collections.addAll(toExclude, clients);
@@ -237,9 +236,9 @@ public class Server extends Receiver<Consumer<Client>> implements Channeled<Asyn
      * @param clients A {@link Collection} of {@link Client}s to exclude from receiving the {@link Packet}.
      */
     private void writeHelper(Consumer<Client> consumer, Collection<? extends Client> clients) {
-        var toExclude = Collections.newSetFromMap(new IdentityHashMap<>(clients.size()));
+        Collection<Client> toExclude = Collections.newSetFromMap(new IdentityHashMap<>(clients.size()));
         toExclude.addAll(clients);
-        connectedClients.stream().filter(Predicate.not(toExclude::contains)).forEach(consumer);
+        connectedClients.stream().filter(c -> !toExclude.contains(c)).forEach(consumer);
     }
     
     /**

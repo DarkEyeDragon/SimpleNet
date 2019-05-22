@@ -78,7 +78,7 @@ final class ReadTest {
     @ParameterizedTest
     @ValueSource(strings = { "true", "false"})
     void testReadBoolean(String s) {
-        var b = Boolean.parseBoolean(s);
+        boolean b = Boolean.parseBoolean(s);
         client.onConnect(() -> Packet.builder().putBoolean(b).writeAndFlush(client));
         server.onConnect(client -> client.readBoolean(readBoolean -> {
             assertEquals(b, readBoolean);

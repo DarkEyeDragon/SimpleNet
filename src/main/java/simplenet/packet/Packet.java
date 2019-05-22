@@ -155,8 +155,8 @@ public final class Packet {
      * @return The {@link Packet} to allow for chained writes.
      */
     public Packet putChar(char c, ByteOrder order) {
-        var buffer = HEAP_BUFFER_POOL.take(Character.BYTES);
-        var array = buffer.putChar(order == ByteOrder.LITTLE_ENDIAN ? Character.reverseBytes(c) : c).array();
+        ByteBuffer buffer = HEAP_BUFFER_POOL.take(Character.BYTES);
+        byte[] array = buffer.putChar(order == ByteOrder.LITTLE_ENDIAN ? Character.reverseBytes(c) : c).array();
         
         try {
             return enqueue(Arrays.copyOfRange(array, 0, Character.BYTES));
@@ -230,8 +230,8 @@ public final class Packet {
      * @return The {@link Packet} to allow for chained writes.
      */
     public Packet putInt(int i, ByteOrder order) {
-        var buffer = HEAP_BUFFER_POOL.take(Integer.BYTES);
-        var array = buffer.putInt(order == ByteOrder.LITTLE_ENDIAN ? Integer.reverseBytes(i) : i).array();
+        ByteBuffer buffer = HEAP_BUFFER_POOL.take(Integer.BYTES);
+        byte[] array = buffer.putInt(order == ByteOrder.LITTLE_ENDIAN ? Integer.reverseBytes(i) : i).array();
         
         try {
             return enqueue(Arrays.copyOfRange(array, 0, Integer.BYTES));
@@ -259,8 +259,8 @@ public final class Packet {
      * @return The {@link Packet} to allow for chained writes.
      */
     public Packet putLong(long l, ByteOrder order) {
-        var buffer = HEAP_BUFFER_POOL.take(Long.BYTES);
-        var array = buffer.putLong(order == ByteOrder.LITTLE_ENDIAN ? Long.reverseBytes(l) : l).array();
+        ByteBuffer buffer = HEAP_BUFFER_POOL.take(Long.BYTES);
+        byte[] array = buffer.putLong(order == ByteOrder.LITTLE_ENDIAN ? Long.reverseBytes(l) : l).array();
         
         try {
             return enqueue(Arrays.copyOfRange(array, 0, Long.BYTES));
@@ -288,9 +288,9 @@ public final class Packet {
      * @return The {@link Packet} to allow for chained writes.
      */
     public Packet putShort(int s, ByteOrder order) {
-        var buffer = HEAP_BUFFER_POOL.take(Short.BYTES);
-        var value = (short) s;
-        var array = buffer.putShort(order == ByteOrder.LITTLE_ENDIAN ? Short.reverseBytes(value) : value).array();
+        ByteBuffer buffer = HEAP_BUFFER_POOL.take(Short.BYTES);
+        short value = (short) s;
+        byte[] array = buffer.putShort(order == ByteOrder.LITTLE_ENDIAN ? Short.reverseBytes(value) : value).array();
         
         try {
             return enqueue(Arrays.copyOfRange(array, 0, Short.BYTES));
@@ -344,7 +344,7 @@ public final class Packet {
      * @return The {@link Packet} to allow for chained writes.
      */
     public Packet putString(String s, Charset charset, ByteOrder order) {
-        var bytes = s.getBytes(charset);
+        byte[] bytes = s.getBytes(charset);
         putShort(bytes.length, order);
         putBytes(bytes);
         return this;
@@ -409,7 +409,7 @@ public final class Packet {
             throw new IllegalArgumentException("You must send this packet to at least one client!");
         }
 
-        for (var client : clients) {
+        for (Client client : clients) {
             write(client);
         }
     }
@@ -455,7 +455,7 @@ public final class Packet {
             throw new IllegalArgumentException("You must send this packet to at least one client!");
         }
 
-        for (var client : clients) {
+        for (Client client : clients) {
             writeAndFlush(client);
         }
     }

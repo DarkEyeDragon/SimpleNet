@@ -59,7 +59,7 @@ public interface FloatReader extends DataReader {
      */
     default float readFloat(ByteOrder order) throws IllegalStateException {
         checkIfBlockingInsideCallback();
-        var future = new CompletableFuture<Float>();
+        CompletableFuture<Float> future = new CompletableFuture<>();
         readFloat(future::complete, order);
         return read(future);
     }
@@ -184,8 +184,8 @@ public interface FloatReader extends DataReader {
      * @param n          The amount of {@code float}s requested.
      * @param consumer   Holds the operations that should be performed once the {@code n} {@code float}s are received.
      */
-    private void processFloats(ByteBuffer buffer, int n, Consumer<float[]> consumer) {
-        var f = new float[n];
+    default void processFloats(ByteBuffer buffer, int n, Consumer<float[]> consumer) {
+        float[] f = new float[n];
         buffer.asFloatBuffer().get(f);
         consumer.accept(f);
     }

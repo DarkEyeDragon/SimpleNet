@@ -58,7 +58,7 @@ public interface DoubleReader extends DataReader {
      * @throws IllegalStateException if this method is called inside of a non-blocking callback.
      */
     default double readDouble(ByteOrder order) throws IllegalStateException {
-        var future = new CompletableFuture<Double>();
+        CompletableFuture<Double> future = new CompletableFuture<>();
         readDouble(future::complete, order);
         return read(future);
     }
@@ -183,8 +183,8 @@ public interface DoubleReader extends DataReader {
      * @param n          The amount of {@code double}s requested.
      * @param consumer   Holds the operations that should be performed once the {@code n} {@code double}s are received.
      */
-    private void processDoubles(ByteBuffer buffer, int n, Consumer<double[]> consumer) {
-        var d = new double[n];
+    default void processDoubles(ByteBuffer buffer, int n, Consumer<double[]> consumer) {
+        double[] d = new double[n];
         buffer.asDoubleBuffer().get(d);
         consumer.accept(d);
     }
