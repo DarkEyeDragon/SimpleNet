@@ -557,7 +557,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
 					}
 				}
 		
-				var wrappedBuffer = ByteBuffer.wrap(data).order(order);
+				ByteBuffer wrappedBuffer = ByteBuffer.wrap(data).order(order);
 		
 				boolean shouldReturn = !predicate.test(wrappedBuffer);
 
@@ -575,7 +575,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
 			queue.offerFirst(pair);
 
 			if (!readInProgress.getAndSet(true)) {
-				channel.read(buffer.position(size.get()), this, Listener.INSTANCE);
+				channel.read((ByteBuffer) buffer.position(size.get()), this, Listener.INSTANCE);
 			}
         }
     }
