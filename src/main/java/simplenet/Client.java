@@ -138,7 +138,11 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
                         queue.pollLast();
                     }
     
-                    // TODO: After logging is added, warn the user if wrappedBuffer.hasRemaining() is true.
+                    if (wrappedBuffer.hasRemaining()) {
+                        if (Utility.isDebug()) {
+                            System.err.println(wrappedBuffer.remaining() + " byte(s) still need to be read!");
+                        }
+                    }
 
                     while (!stack.isEmpty()) {
                         queue.offerLast(stack.pop());
@@ -153,10 +157,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
                 client.inCallback.set(false);
                 
                 if (client.size.get() > 0) {
-                	// If we are about to call `channel.read`, then the position
-					// of the buffer must be placed after any remaining, unprocessed
-					// data. Regardless, it should be compacted as well.
-                    buffer.compact().position(isQueueEmpty ? 0 : client.size.get());
+                    buffer.compact();
                 } else {
                     buffer.clear();
                 }
@@ -164,6 +165,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
                 if (isQueueEmpty) {
 					// Because the queue is empty, the client should not attempt to read more data until
 					// more is requested by the user.
+                    buffer.position(0);
 					client.readInProgress.set(false);
 				} else {
 					// Because the queue is NOT empty and we don't have enough data to process the request,
@@ -554,20 +556,26 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
 						throw new IllegalStateException("An exception occurred whilst decrypting data:", e);
 					}
 				}
+		
+				var wrappedBuffer = ByteBuffer.wrap(data).order(order);
+		
+				boolean shouldReturn = !predicate.test(wrappedBuffer);
 
-				ByteBuffer wrappedBuffer = ByteBuffer.wrap(data).order(order);
+                if (wrappedBuffer.hasRemaining()) {
+                    if (Utility.isDebug()) {
+                        System.err.println(wrappedBuffer.remaining() + " byte(s) still need to be read!");
+                    }
+                }
 
-				if (!predicate.test(wrappedBuffer)) {
+				if (shouldReturn) {
 					return;
 				}
-
-				// TODO: After logging is added, warn the user if wrappedBuffer.hasRemaining() is true.
 			}
 
 			queue.offerFirst(pair);
 
 			if (!readInProgress.getAndSet(true)) {
-				channel.read(buffer, this, Listener.INSTANCE);
+				channel.read(buffer.position(size.get()), this, Listener.INSTANCE);
 			}
         }
     }
