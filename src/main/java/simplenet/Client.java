@@ -109,9 +109,9 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
 					return;
                 }
     
-                var shouldDecrypt = client.decryptionCipher != null;
-                var stack = client.stack;
-				var isQueueEmpty = false;
+                boolean shouldDecrypt = client.decryptionCipher != null;
+                Deque<IntPair<Predicate<ByteBuffer>>> stack = client.stack;
+				boolean isQueueEmpty = false;
                 int key;
 
 				client.inCallback.set(true);
@@ -183,15 +183,15 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
      * The {@link CompletionHandler} used when this {@link Client} sends one or more {@link Packet}s to a
      * {@link Server}.
      */
-    private final CompletionHandler<Integer, ByteBuffer> packetHandler = new CompletionHandler<>() {
+    private final CompletionHandler<Integer, ByteBuffer> packetHandler = new CompletionHandler<Integer, ByteBuffer>() {
         @Override
         public void completed(Integer result, ByteBuffer buffer) {
-            var client = Client.this;
+            Client client = Client.this;
 
             DIRECT_BUFFER_POOL.give(buffer);
 
             synchronized (client.outgoingPackets) {
-                var payload = client.packetsToFlush.poll();
+                ByteBuffer payload = client.packetsToFlush.poll();
     
                 if (payload == null) {
                     client.writeInProgress.set(false);
@@ -469,7 +469,11 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
         flush();
 
         while (writeInProgress.get()) {
-            Thread.onSpinWait();
+            try {
+                Thread.sleep(100L);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
         Channeled.super.close();
@@ -529,7 +533,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
         }
 
         synchronized (buffer) {
-            var pair = new IntPair<Predicate<ByteBuffer>>(n, buffer -> predicate.test(buffer.order(order)));
+            IntPair<Predicate<ByteBuffer>> pair = new IntPair<>(n, buffer -> predicate.test(buffer.order(order)));
 
             if (inCallback.get()) {
                 stack.push(pair);
@@ -539,7 +543,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
 			while (size.get() >= n && queue.isEmpty() && stack.isEmpty()) {
 				size.add(-n);
 
-				var data = new byte[n];
+				byte[] data = new byte[n];
 
 				buffer.order(order).get(data);
 
@@ -551,7 +555,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
 					}
 				}
 
-				var wrappedBuffer = ByteBuffer.wrap(data).order(order);
+				ByteBuffer wrappedBuffer = ByteBuffer.wrap(data).order(order);
 
 				if (!predicate.test(wrappedBuffer)) {
 					return;
@@ -578,8 +582,8 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
 
         int totalBytes = 0;
         
-        var shouldEncrypt = encryptionCipher != null;
-        var queue = new ArrayDeque<byte[]>();
+        boolean shouldEncrypt = encryptionCipher != null;
+        Deque<byte[]> queue = new ArrayDeque<>();
 
         synchronized (outgoingPackets) {
             while ((packet = outgoingPackets.poll()) != null) {
@@ -594,7 +598,7 @@ public class Client extends Receiver<Runnable> implements Channeled<Asynchronous
 
                 // If we've buffered all of the packets that we can, send them off.
                 if (tooBig || empty) {
-                    var raw = DIRECT_BUFFER_POOL.take(empty ? totalBytes : currentBytes);
+                    ByteBuffer raw = DIRECT_BUFFER_POOL.take(empty ? totalBytes : currentBytes);
 
                     byte[] input;
 
