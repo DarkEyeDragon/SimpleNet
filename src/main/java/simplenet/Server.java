@@ -42,10 +42,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -111,7 +108,7 @@ public class Server extends Receiver<Consumer<Client>> implements Channeled<Asyn
     
         this.connectedClients = ConcurrentHashMap.newKeySet();
 
-        var executor = new ThreadPoolExecutor(numThreads, numThreads, 0L, TimeUnit.MILLISECONDS,
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(numThreads, numThreads, 0L, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<>(), runnable -> {
             Thread thread = new Thread(runnable);
             thread.setDaemon(false);
@@ -150,7 +147,7 @@ public class Server extends Receiver<Consumer<Client>> implements Channeled<Asyn
             channel.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
                 @Override
                 public void completed(AsynchronousSocketChannel channel, Void attachment) {
-                    var client = new Client(bufferSize, channel);
+                    Client client = new Client(bufferSize, channel);
                     connectedClients.add(client);
                     client.postDisconnect(() -> connectedClients.remove(client));
                     connectListeners.forEach(consumer -> consumer.accept(client));
@@ -223,9 +220,9 @@ public class Server extends Receiver<Consumer<Client>> implements Channeled<Asyn
      * @param clients A variable amount of {@link Client}s to exclude from receiving the {@link Packet}.
      */
     private <T extends Client> void writeHelper(Consumer<Client> consumer, T... clients) {
-        var toExclude = Collections.newSetFromMap(new IdentityHashMap<>(clients.length));
+        Collection<Client> toExclude = Collections.newSetFromMap(new IdentityHashMap<>(clients.length));
         Collections.addAll(toExclude, clients);
-        connectedClients.stream().filter(Predicate.not(toExclude::contains)).forEach(consumer);
+        connectedClients.stream().filter(o -> !toExclude.contains(o)).forEach(consumer);
     }
     
     /**

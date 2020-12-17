@@ -26,6 +26,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
+import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -311,7 +312,7 @@ final class ReadTest {
     @Test
     void testReadNestedCallbacksExecuteInCorrectOrder() {
         final byte[] bytes = {42, -24, 123, 32, 3};
-        var queue = new ArrayDeque<Byte>();
+        Queue<Byte> queue = new ArrayDeque<>();
         client.onConnect(() -> Packet.builder().putBytes(bytes).writeAndFlush(client));
         server.onConnect(client -> {
             client.readByte(first -> {
