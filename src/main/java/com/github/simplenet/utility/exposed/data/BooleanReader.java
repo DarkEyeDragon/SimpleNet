@@ -104,7 +104,7 @@ public interface BooleanReader extends DataReader {
      * @param n          The amount of {@code boolean}s requested.
      * @param consumer   Holds the operations that should be performed once the {@code n} {@code boolean}s are received.
      */
-    private void processBooleans(ByteBuffer buffer, int n, Consumer<boolean[]> consumer) {
+    default void processBooleans(ByteBuffer buffer, int n, Consumer<boolean[]> consumer) {
         boolean[] b = new boolean[n];
     
         for (int i = 0; i < n; i++) {

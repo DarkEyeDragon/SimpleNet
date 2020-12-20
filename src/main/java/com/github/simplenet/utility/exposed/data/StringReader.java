@@ -162,7 +162,7 @@ public interface StringReader extends ShortReader {
      * @param consumer   Holds the operations that should be performed once the {@code n} bytes are received.
      * @param charset    The {@link Charset} encoding of the {@link String}.
      */
-    private void processBytes(short n, Consumer<String> consumer, Charset charset, ByteOrder order) {
+    default void processBytes(short n, Consumer<String> consumer, Charset charset, ByteOrder order) {
         int length = order == ByteOrder.LITTLE_ENDIAN ? Short.reverseBytes(n) : n;
         
         read(Byte.BYTES * (length & 0xFFFF), buffer -> {

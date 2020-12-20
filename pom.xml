@@ -87,7 +87,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>3.1.1</version>
                 <configuration>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
@@ -115,6 +115,7 @@
                     <compilerArgument>-Xlint</compilerArgument>
                 </configuration>
             </plugin>
+            <!--Who needs whatever this is
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
@@ -128,7 +129,8 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin>-->
+            <!--Who needs docs anyway
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
@@ -151,11 +153,11 @@
                 <configuration>
                     <additionalOptions>-Xdoclint:none</additionalOptions>
                 </configuration>
-            </plugin>
+            </plugin>!-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.2.1</version>
+                <version>3.2.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -168,7 +170,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M5</version>
+                <version>3.0.0-M3</version>
                 <configuration>
                     <argLine>--add-opens com.github.simplenet/com.github.simplenet=ALL-UNNAMED</argLine>
                 </configuration>
