@@ -99,7 +99,7 @@ public class Client extends AbstractReceiver<Runnable> implements Channeled<Asyn
             }
 
             Client client = pair.getKey();
-            ByteBuffer buffer = (ByteBuffer) pair.getValue().flip();
+            Buffer buffer = pair.getValue().flip();
 
             synchronized (client.queue) {
                 Deque<IntPair<Predicate<ByteBuffer>>> queue = client.queue;
@@ -121,11 +121,11 @@ public class Client extends AbstractReceiver<Runnable> implements Channeled<Asyn
                 client.inCallback.set(true);
 
                 while (buffer.remaining() >= (key = peek.getKey())) {
-                    ByteBuffer wrappedBuffer = (ByteBuffer) buffer.duplicate().mark().limit(buffer.position() + key);
+                    Buffer wrappedBuffer = ((ByteBuffer) buffer).duplicate().mark().limit(buffer.position() + key);
 
                     if (shouldDecrypt) {
                         try {
-                            wrappedBuffer = (ByteBuffer) client.decryptionFunction.apply(client.decryptionCipher, wrappedBuffer)
+                            wrappedBuffer = client.decryptionFunction.apply(client.decryptionCipher, (ByteBuffer) wrappedBuffer)
                                     .reset();
                         } catch (Exception e) {
                             throw new IllegalStateException("An exception occurred whilst encrypting data:", e);
@@ -133,7 +133,7 @@ public class Client extends AbstractReceiver<Runnable> implements Channeled<Asyn
                     }
 
                     // If the predicate returns false, poll the element from the queue.
-                    if (!peek.getValue().test(wrappedBuffer)) {
+                    if (!peek.getValue().test((ByteBuffer) wrappedBuffer)) {
                         queue.pollLast();
                     }
 
@@ -165,7 +165,7 @@ public class Client extends AbstractReceiver<Runnable> implements Channeled<Asyn
                     client.channel.read((ByteBuffer) buffer.position(buffer.limit()).limit(key), pair, this);
                 } else {
                     // The buffer that was used must be returned to the pool.
-                    DIRECT_BUFFER_POOL.give(buffer);
+                    DIRECT_BUFFER_POOL.give((ByteBuffer) buffer);
 
                     if (queueIsEmpty) {
                         // Because the queue is empty, the client should not attempt to read more data until
@@ -580,7 +580,7 @@ public class Client extends AbstractReceiver<Runnable> implements Channeled<Asyn
                     }
                 }
 
-                raw.flip();
+                ((Buffer)raw).flip();
 
                 if (!writeInProgress.getAndSet(true)) {
                     channel.write(raw, raw, packetHandler);
